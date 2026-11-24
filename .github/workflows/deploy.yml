@@ -3,6 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,27 +14,41 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  APP_DIR: .   # change to "pocket-chat" if package.json is inside that folder
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Extract ZIP files
+      - name: Check package.json exists
         run: |
-          find . -maxdepth 1 -name "*.zip" -type f -exec unzip -o {} -d . \;
+          if [ ! -f "$APP_DIR/package.json" ]; then
+            echo "package.json not found in '$APP_DIR'. Repo files:"
+            ls -la
+            exit 1
+          fi
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - run: npm install
+      - name: Install
+        working-directory: ${{ env.APP_DIR }}
+        run: npm install
 
-      - run: npm run build
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: ${{ env.APP_DIR }}/dist
 
   deploy:
     needs: build
@@ -42,5 +57,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
