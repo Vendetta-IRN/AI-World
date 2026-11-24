@@ -14,9 +14,6 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-env:
-  APP_DIR: .   # change to "pocket-chat" if package.json is inside that folder
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,10 +21,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check package.json exists
+      - name: Find project (unzip if needed)
         run: |
-          if [ ! -f "$APP_DIR/package.json" ]; then
-            echo "package.json not found in '$APP_DIR'. Repo files:"
+          if [ ! -f package.json ] && [ ! -f pocket-chat/package.json ] && [ -f pocket-chat.zip ]; then
+            unzip -q pocket-chat.zip
+          fi
+          if [ -f package.json ]; then
+            echo "APP_DIR=." >> "$GITHUB_ENV"
+          elif [ -f pocket-chat/package.json ]; then
+            echo "APP_DIR=pocket-chat" >> "$GITHUB_ENV"
+          else
+            echo "package.json not found. Repo files:"
             ls -la
             exit 1
           fi
